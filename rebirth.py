@@ -9,42 +9,57 @@ pygame.init()
 # Constants
 WIDTH, HEIGHT = 800, 600
 FPS = 60
-PLAYER_SIZE = 50
+PLAYER_WIDTH, PLAYER_HEIGHT = 50, 50
 PLAYER_COLOR = (0, 128, 255)
 BG_COLOR = (30, 30, 30)
-PLAYER_SPEED = 5
+
+GRAVITY = 0.5
+JUMP_STRENGTH = -10
+FLOOR_Y = HEIGHT - PLAYER_HEIGHT
 
 # Set up display
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Rebirth: The Beginning")
+pygame.display.set_caption("Rebirth: The Beginning (with Gravity)")
 clock = pygame.time.Clock()
 
 # Player setup
-player_rect = pygame.Rect(WIDTH//2, HEIGHT//2, PLAYER_SIZE, PLAYER_SIZE)
+player_rect = pygame.Rect(WIDTH // 2, FLOOR_Y, PLAYER_WIDTH, PLAYER_HEIGHT)
+player_velocity_y = 0
+on_ground = True
 
-# Game loop
 def main():
+    global player_velocity_y, on_ground
+
     running = True
     while running:
-        clock.tick(FPS)  # Control game speed
+        clock.tick(FPS)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
 
-        # Get keys
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_LEFT] or keys[pygame.K_a]:
-            player_rect.x -= PLAYER_SPEED
-        if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
-            player_rect.x += PLAYER_SPEED
-        if keys[pygame.K_UP] or keys[pygame.K_w]:
-            player_rect.y -= PLAYER_SPEED
-        if keys[pygame.K_DOWN] or keys[pygame.K_s]:
-            player_rect.y += PLAYER_SPEED
 
-        # Keep player on screen
-        player_rect.clamp_ip(screen.get_rect())
+        # Horizontal movement
+        if keys[pygame.K_LEFT] or keys[pygame.K_a]:
+            player_rect.x -= 5
+        if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
+            player_rect.x += 5
+
+        # Jumping
+        if (keys[pygame.K_SPACE] or keys[pygame.K_w] or keys[pygame.K_UP]) and on_ground:
+            player_velocity_y = JUMP_STRENGTH
+            on_ground = False
+
+        # Apply gravity
+        player_velocity_y += GRAVITY
+        player_rect.y += player_velocity_y
+
+        # Floor collision
+        if player_rect.y >= FLOOR_Y:
+            player_rect.y = FLOOR_Y
+            player_velocity_y = 0
+            on_ground = True
 
         # Draw everything
         screen.fill(BG_COLOR)
