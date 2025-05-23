@@ -19,20 +19,31 @@ FLOOR_Y = HEIGHT - PLAYER_HEIGHT
 
 # Set up display
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Rebirth: The Beginning (with Gravity)")
+pygame.display.set_caption("Rebirth: Gravity Mode")
 clock = pygame.time.Clock()
+
+# Font for score
+font = pygame.font.SysFont("Arial", 28)
 
 # Player setup
 player_rect = pygame.Rect(WIDTH // 2, FLOOR_Y, PLAYER_WIDTH, PLAYER_HEIGHT)
 player_velocity_y = 0
 on_ground = True
 
+# Score
+score = 0
+score_timer = 0  # keeps track of time passed for score update
+
+def draw_score(score):
+    score_surface = font.render(f"Score: {score}", True, (255, 255, 255))
+    screen.blit(score_surface, (10, 10))
+
 def main():
-    global player_velocity_y, on_ground
+    global player_velocity_y, on_ground, score, score_timer
 
     running = True
     while running:
-        clock.tick(FPS)
+        dt = clock.tick(FPS) / 1000  # Time in seconds since last frame
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -51,7 +62,7 @@ def main():
             player_velocity_y = JUMP_STRENGTH
             on_ground = False
 
-        # Apply gravity
+        # Gravity
         player_velocity_y += GRAVITY
         player_rect.y += player_velocity_y
 
@@ -61,9 +72,16 @@ def main():
             player_velocity_y = 0
             on_ground = True
 
+        # Update score every 1 second
+        score_timer += dt
+        if score_timer >= 1:
+            score += 1
+            score_timer = 0
+
         # Draw everything
         screen.fill(BG_COLOR)
         pygame.draw.rect(screen, PLAYER_COLOR, player_rect)
+        draw_score(score)
         pygame.display.flip()
 
     pygame.quit()
