@@ -55,9 +55,9 @@ def main():
             if event.type == pygame.QUIT:
                 running = False
 
-        if not game_over:
-            keys = pygame.key.get_pressed()
+        keys = pygame.key.get_pressed()
 
+        if not game_over:
             # Horizontal movement
             if keys[pygame.K_LEFT] or keys[pygame.K_a]:
                 player_rect.x -= 5
@@ -95,6 +95,19 @@ def main():
                 score += 1
                 score_timer = 0
 
+        else:
+            # Restart game if R is pressed
+            if keys[pygame.K_r]:
+                player_rect.x = WIDTH // 2
+                player_rect.y = FLOOR_Y
+                enemy_rect.x = 0
+                enemy_rect.y = FLOOR_Y
+                player_velocity_y = 0
+                score = 0
+                score_timer = 0
+                game_over = False
+                on_ground = True
+
         # Drawing
         screen.fill(BG_COLOR)
         pygame.draw.rect(screen, PLAYER_COLOR, player_rect)
@@ -103,7 +116,9 @@ def main():
 
         if game_over:
             game_over_text = font.render("Game Over!", True, (255, 0, 0))
+            restart_text = font.render("Press R to Restart", True, (200, 200, 200))
             screen.blit(game_over_text, (WIDTH // 2 - 80, HEIGHT // 2))
+            screen.blit(restart_text, (WIDTH // 2 - 130, HEIGHT // 2 + 40))
 
         pygame.display.flip()
 
