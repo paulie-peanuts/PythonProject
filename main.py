@@ -24,14 +24,15 @@ def main():
     running = True
     while running:
         dt = clock.tick(FPS) / 1000
-        for event in pygame.event.get():
+        event_list = pygame.event.get()
+        for event in event_list:
             if event.type == pygame.QUIT:
                 running = False
 
         keys = pygame.key.get_pressed()
 
         if not game_over:
-            player.handle_input(keys)
+            player.handle_input(event_list)
             player.apply_gravity()
 
             # Enemy movement
