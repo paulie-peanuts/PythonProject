@@ -23,16 +23,30 @@ class Player:
         if keys[pygame.K_RIGHT] or keys[pygame.K_d]:
             self.rect.x += 5
 
-    def apply_gravity(self):
+    def apply_gravity(self, platforms):
         self.velocity_y += GRAVITY
         self.rect.y += self.velocity_y
 
-        if self.rect.y >= FLOOR_Y:
-            self.rect.y = FLOOR_Y
+        landed = False
+
+        for plat in platforms:
+            if self.rect.colliderect(plat):
+                if self.velocity_y > 0 and self.rect.bottom - self.velocity_y <= plat.top:
+                    self.rect.bottom = plat.top
+                    self.velocity_y = 0
+                    self.on_ground = True
+                    self.jumps_left = self.max_jumps
+                    landed = True
+
+        # Ground check
+        if self.rect.bottom >= HEIGHT:
+            self.rect.bottom = HEIGHT
             self.velocity_y = 0
             self.on_ground = True
             self.jumps_left = self.max_jumps
-        else:
+            landed = True
+
+        if not landed:
             self.on_ground = False
 
     def draw(self, screen):

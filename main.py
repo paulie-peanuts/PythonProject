@@ -15,6 +15,13 @@ score = 0
 score_timer = 0
 game_over = False
 
+# Create floating platforms
+platforms = [
+    pygame.Rect(200, 400, PLATFORM_WIDTH, PLATFORM_HEIGHT),
+    pygame.Rect(400, 300, PLATFORM_WIDTH, PLATFORM_HEIGHT),
+    pygame.Rect(150, 200, PLATFORM_WIDTH, PLATFORM_HEIGHT),
+]
+
 def draw_score(score):
     score_text = font.render(f"Score: {score}", True, (255, 255, 255))
     screen.blit(score_text, (10, 10))
@@ -33,7 +40,7 @@ def main():
 
         if not game_over:
             player.handle_input(event_list)
-            player.apply_gravity()
+            player.apply_gravity(platforms)
 
             # Enemy movement
             if enemy.x < player.rect.x:
@@ -51,7 +58,7 @@ def main():
                 score_timer = 0
         else:
             if keys[pygame.K_r]:
-                player.__init__()  # Reset player
+                player.__init__()
                 enemy.x = 0
                 score = 0
                 score_timer = 0
@@ -61,6 +68,10 @@ def main():
         screen.fill(BG_COLOR)
         player.draw(screen)
         pygame.draw.rect(screen, ENEMY_COLOR, enemy)
+
+        for plat in platforms:
+            pygame.draw.rect(screen, PLATFORM_COLOR, plat)
+
         draw_score(score)
 
         if game_over:
