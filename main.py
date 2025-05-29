@@ -1,4 +1,5 @@
-import pygame, sys
+import pygame
+import sys
 from settings import *
 from player import Player
 
@@ -27,7 +28,7 @@ def draw_score(score):
     screen.blit(score_text, (10, 10))
 
 def main():
-    global score, score_timer, game_over
+    global player, score, score_timer, game_over
     running = True
     while running:
         dt = clock.tick(FPS) / 1000
@@ -58,7 +59,7 @@ def main():
                 score_timer = 0
         else:
             if keys[pygame.K_r]:
-                player.__init__()
+                player = Player()
                 enemy.x = 0
                 score = 0
                 score_timer = 0
