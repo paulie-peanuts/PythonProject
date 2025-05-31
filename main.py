@@ -1,4 +1,4 @@
-import pygame, sys, random
+import pygame, sys
 from settings import *
 from player import Player
 
@@ -7,13 +7,29 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Rebirth")
 clock = pygame.time.Clock()
 font = pygame.font.SysFont("Arial", 28)
+small_font = pygame.font.SysFont("Arial", 20)
 
 player = Player()
-enemy = pygame.Rect(0, FLOOR_Y, ENEMY_WIDTH, ENEMY_HEIGHT)
+# Ground enemy
+ground_enemy = {"rect": pygame.Rect(0, FLOOR_Y, ENEMY_WIDTH, ENEMY_HEIGHT), "hit_count": 0, "hit_color_timer": 0}
+# Flying enemy - moves horizontally and vertically in a small range
+flying_enemy = {
+    "rect": pygame.Rect(600, 150, ENEMY_WIDTH, ENEMY_HEIGHT),
+    "hit_count": 0,
+    "hit_color_timer": 0,
+    "vel_x": 2,
+    "vel_y": 2,
+    "start_x": 600,
+    "start_y": 150,
+    "range_x": 100,
+    "range_y": 60,
+}
+
 enemy_speed = 3
 score = 0
 score_timer = 0
 game_over = False
+start_screen = True
 
 # Create floating platforms
 platforms = [
@@ -22,61 +38,31 @@ platforms = [
     pygame.Rect(150, 200, PLATFORM_WIDTH, PLATFORM_HEIGHT),
 ]
 
-# Flying enemy class
-class FlyingEnemy:
-    def __init__(self):
-        self.rect = pygame.Rect(
-            random.randint(0, WIDTH - ENEMY_WIDTH),
-            random.randint(100, 300),
-            ENEMY_WIDTH,
-            ENEMY_HEIGHT
-        )
-        self.speed_x = random.choice([-3, 3])
-        self.speed_y = random.choice([-1.5, 1.5])
-        self.direction_y = 1
-
-    def update(self):
-        self.rect.x += self.speed_x
-        self.rect.y += self.speed_y * self.direction_y
-
-        # Bounce vertically
-        if self.rect.top <= 50 or self.rect.bottom >= 350:
-            self.direction_y *= -1
-
-        # Wrap around screen horizontally
-        if self.rect.right < 0:
-            self.rect.left = WIDTH
-        elif self.rect.left > WIDTH:
-            self.rect.right = 0
-
-    def draw(self, screen):
-        pygame.draw.rect(screen, (255, 100, 100), self.rect)
-
-# Track high score
-def load_high_score():
-    try:
-        with open("highscore.txt", "r") as f:
-            return int(f.read())
-    except:
-        return 0
-
-def save_high_score(score):
-    with open("highscore.txt", "w") as f:
-        f.write(str(score))
-
-high_score = load_high_score()
-
-def draw_score(score, high_score):
+def draw_score(score):
     score_text = font.render(f"Score: {score}", True, (255, 255, 255))
     screen.blit(score_text, (10, 10))
-    high_score_text = font.render(f"High Score: {high_score}", True, (255, 255, 0))
-    screen.blit(high_score_text, (10, 40))
+
+def draw_start_screen():
+    screen.fill(BG_COLOR)
+    title_text = font.render("Rebirth", True, (255, 255, 255))
+    instructions = [
+        "Controls:",
+        "Move Left/Right: A/D or Left/Right arrows",
+        "Jump: Space, W, or Up arrow (double jump)",
+        "Aim with mouse",
+        "Shoot: F key",
+        "Avoid enemies!",
+        "Press Enter to Start"
+    ]
+    screen.blit(title_text, (WIDTH // 2 - title_text.get_width() // 2, 100))
+    for i, line in enumerate(instructions):
+        line_surf = small_font.render(line, True, (200, 200, 200))
+        screen.blit(line_surf, (WIDTH // 2 - line_surf.get_width() // 2, 180 + i * 30))
+    pygame.display.flip()
 
 def main():
-    global score, score_timer, game_over, high_score
+    global score, score_timer, game_over, enemy_speed, start_screen
     running = True
-    flying_enemies = [FlyingEnemy() for _ in range(2)]
-
     while running:
         dt = clock.tick(FPS) / 1000
         event_list = pygame.event.get()
@@ -86,57 +72,96 @@ def main():
 
         keys = pygame.key.get_pressed()
 
+        if start_screen:
+            draw_start_screen()
+            for event in event_list:
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_RETURN:
+                    start_screen = False
+            continue
+
         if not game_over:
             player.handle_input(event_list)
             player.apply_gravity(platforms)
+            player.update_projectiles()
 
-            # Enemy movement
-            if enemy.x < player.rect.x:
-                enemy.x += enemy_speed
-            elif enemy.x > player.rect.x:
-                enemy.x -= enemy_speed
+            # Ground enemy movement (follows player x)
+            if ground_enemy["rect"].x < player.rect.x:
+                ground_enemy["rect"].x += enemy_speed
+            elif ground_enemy["rect"].x > player.rect.x:
+                ground_enemy["rect"].x -= enemy_speed
 
-            if player.rect.colliderect(enemy):
+            # Flying enemy movement (moves in a rectangle)
+            flying_enemy["rect"].x += flying_enemy["vel_x"]
+            flying_enemy["rect"].y += flying_enemy["vel_y"]
+            if abs(flying_enemy["rect"].x - flying_enemy["start_x"]) > flying_enemy["range_x"]:
+                flying_enemy["vel_x"] *= -1
+            if abs(flying_enemy["rect"].y - flying_enemy["start_y"]) > flying_enemy["range_y"]:
+                flying_enemy["vel_y"] *= -1
+
+            # Enemy hit color timers decrement
+            for enemy in (ground_enemy, flying_enemy):
+                if enemy["hit_color_timer"] > 0:
+                    enemy["hit_color_timer"] -= dt
+                else:
+                    enemy["hit_color_timer"] = 0
+
+            # Check projectile collisions for both enemies
+            for projectile in player.projectiles[:]:
+                for enemy in (ground_enemy, flying_enemy):
+                    if projectile["rect"].colliderect(enemy["rect"]):
+                        player.projectiles.remove(projectile)
+                        enemy["hit_count"] += 1
+                        enemy["hit_color_timer"] = 0.5  # half second highlight
+                        if enemy["hit_count"] >= 2:
+                            # Respawn enemy
+                            if enemy is ground_enemy:
+                                enemy["rect"].x = 0
+                            else:
+                                enemy["rect"].x = enemy["start_x"]
+                                enemy["rect"].y = enemy["start_y"]
+                            enemy["hit_count"] = 0
+
+            # Check collision with player
+            if player.rect.colliderect(ground_enemy["rect"]) or player.rect.colliderect(flying_enemy["rect"]):
                 game_over = True
-                if score > high_score:
-                    high_score = score
-                    save_high_score(high_score)
 
-            # Flying enemies
-            for f_enemy in flying_enemies:
-                f_enemy.update()
-                if player.rect.colliderect(f_enemy.rect):
-                    game_over = True
-                    if score > high_score:
-                        high_score = score
-                        save_high_score(high_score)
-
-            # Score
+            # Score increase
             score_timer += dt
             if score_timer >= 1:
                 score += 1
                 score_timer = 0
+
         else:
             if keys[pygame.K_r]:
                 player.__init__()
-                enemy.x = 0
+                ground_enemy["rect"].x = 0
+                ground_enemy["hit_count"] = 0
+                ground_enemy["hit_color_timer"] = 0
+                flying_enemy["rect"].x = flying_enemy["start_x"]
+                flying_enemy["rect"].y = flying_enemy["start_y"]
+                flying_enemy["hit_count"] = 0
+                flying_enemy["hit_color_timer"] = 0
                 score = 0
                 score_timer = 0
                 game_over = False
-                flying_enemies = [FlyingEnemy() for _ in range(2)]
 
-        # Draw
+        # Draw everything
         screen.fill(BG_COLOR)
         player.draw(screen)
-        pygame.draw.rect(screen, ENEMY_COLOR, enemy)
+
+        # Draw enemies with hit color
+        for enemy in (ground_enemy, flying_enemy):
+            color = (255, 255, 0) if enemy["hit_color_timer"] > 0 else ENEMY_COLOR
+            pygame.draw.rect(screen, color, enemy["rect"])
 
         for plat in platforms:
             pygame.draw.rect(screen, PLATFORM_COLOR, plat)
 
-        for f_enemy in flying_enemies:
-            f_enemy.draw(screen)
+        # Draw projectiles
+        for projectile in player.projectiles:
+            pygame.draw.rect(screen, (255, 255, 255), projectile["rect"])
 
-        draw_score(score, high_score)
+        draw_score(score)
 
         if game_over:
             game_over_text = font.render("Game Over!", True, (255, 0, 0))
