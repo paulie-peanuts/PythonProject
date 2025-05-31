@@ -6,9 +6,12 @@ FPS = 60
 PLAYER_WIDTH, PLAYER_HEIGHT = 50, 50
 PLAYER_COLOR = (0, 128, 255)
 
-# Enemy
+# Enemy (Ground)
 ENEMY_WIDTH, ENEMY_HEIGHT = 40, 40
 ENEMY_COLOR = (255, 0, 0)
+
+# Flying Enemy
+FLYING_ENEMY_COLOR = (255, 100, 100)
 
 # Environment
 BG_COLOR = (30, 30, 30)
